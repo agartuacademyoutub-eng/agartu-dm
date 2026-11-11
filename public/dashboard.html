@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Воронка дашборды</title>
+<link rel="icon" href="icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f7; --surface: #ffffff; --line: #e3e7ea; --grid: #edf0f2;
+  --ink: #0e1a20; --ink-2: #4c5a62; --ink-3: #7d8a91;
+  --brand: #0d6884; --brand-soft: #d7ebf1;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --up: #1a7f3c; --down: #c8463c;
+  --heat: 13, 104, 132;
+  --warn-bg: #fff6df; --warn-ink: #7a5300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #0f1416; --surface: #182023; --line: #29343a; --grid: #222c31;
+    --ink: #f1f5f7; --ink-2: #b4c0c6; --ink-3: #85939a;
+    --brand: #3aa6c8; --brand-soft: #173a46;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --up: #4cc27a; --down: #e66767;
+    --heat: 58, 166, 200;
+    --warn-bg: #3a2f12; --warn-ink: #f2cf7a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1416; --surface: #182023; --line: #29343a; --grid: #222c31;
+  --ink: #f1f5f7; --ink-2: #b4c0c6; --ink-3: #85939a;
+  --brand: #3aa6c8; --brand-soft: #173a46;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --up: #4cc27a; --down: #e66767;
+  --heat: 58, 166, 200;
+  --warn-bg: #3a2f12; --warn-ink: #f2cf7a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px 60px; }
+header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-top: 12px; padding-bottom: 10px; }
+header h1 { font-size: 19px; margin: 0; flex: 1 1 auto; }
+header h1 small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-3); }
+nav.sections { width: 100%; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+nav.sections a { white-space: nowrap; font-size: 13px; color: var(--ink-2); padding: 4px 10px; border-radius: 999px; }
+nav.sections a:hover { background: var(--brand-soft); text-decoration: none; }
+select, button, input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+button { cursor: pointer; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 6px 12px; background: var(--surface); }
+.seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+section { margin-top: 28px; scroll-margin-top: 110px; }
+section > h2 { font-size: 18px; margin: 0 0 4px; }
+section > .cap { color: var(--ink-3); font-size: 13px; margin: 0 0 12px; }
+.grid { display: grid; gap: 12px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h3 { font-size: 14px; margin: 0 0 2px; }
+.card .cap { color: var(--ink-3); font-size: 12px; margin-bottom: 10px; }
+.tile .k { color: var(--ink-3); font-size: 12px; }
+.tile .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.tile .d { font-size: 12px; color: var(--ink-3); }
+.d.up { color: var(--up); } .d.down { color: var(--down); }
+.funnel { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch; }
+.funnel .step { background: var(--brand-soft); border-radius: 12px; padding: 14px; text-align: center; }
+.funnel .step .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.funnel .step .k { font-size: 13px; color: var(--ink-2); }
+.funnel .arrow { display: grid; place-items: center; text-align: center; font-size: 12px; color: var(--ink-2); min-width: 92px; }
+.funnel .arrow b { display: block; font-size: 16px; color: var(--ink); }
+@media (max-width: 640px) { .funnel { grid-template-columns: 1fr; } .funnel .arrow { padding: 2px 0; } }
+.chart { position: relative; height: 260px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child, td.l, th.l { text-align: left; }
+th { color: var(--ink-3); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--surface); }
+th.sort { cursor: pointer; user-select: none; }
+th.sort[data-dir]::after { content: attr(data-dir); margin-left: 3px; }
+td.post { white-space: normal; min-width: 240px; max-width: 420px; text-align: left; }
+td.post .meta { color: var(--ink-3); font-size: 11px; }
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--brand-soft); color: var(--ink-2); }
+.pill.trial { background: var(--warn-bg); color: var(--warn-ink); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+.tools input { flex: 1 1 200px; }
+.heat td { text-align: center; min-width: 74px; border: 2px solid var(--surface); border-radius: 6px; }
+.heat td small { display: block; color: var(--ink-3); font-size: 10px; }
+.heat td.l { text-align: left; border: 0; }
+.bars .row { display: grid; grid-template-columns: 120px 1fr 56px; gap: 8px; align-items: center; font-size: 13px; margin: 5px 0; }
+.bars .track { height: 12px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.bars .fill { height: 100%; background: var(--s1); border-radius: 4px; }
+.bars .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.progress { height: 14px; background: var(--grid); border-radius: 999px; overflow: hidden; margin: 8px 0; }
+.progress div { height: 100%; background: var(--s3); }
+.note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.muted { color: var(--ink-3); }
+.login { max-width: 380px; margin: 80px auto; }
+.login input { width: 100%; margin: 8px 0; }
+.loading { opacity: .5; pointer-events: none; }
+.more { margin-top: 10px; }
+.advice { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.advice .card { border-left: 4px solid var(--brand); }
+.advice .card.warn { border-left-color: var(--down); }
+.advice .card.good { border-left-color: var(--up); }
+.advice .tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+.advice .warn .tag { color: var(--down); } .advice .good .tag { color: var(--up); }
+.advice h3 { font-size: 15px; margin: 4px 0 6px; }
+.advice p { margin: 0; font-size: 14px; color: var(--ink-2); }
+.advice ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app"><div class="wrap"><p class="muted" style="margin-top:60px">Жүктеліп жатыр…</p></div></div>
+<script>
+// API — Supabase Edge Function (Vercel-ден көшкен соң бет GitHub Pages-та)
+const API = 'https://pjyeeasrnbwvsexfesdh.supabase.co/functions/v1/api';
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+};
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const nf = new Intl.NumberFormat('ru-RU');
+const fmt = (n) => (n == null || Number.isNaN(n) ? '—' : nf.format(Math.round(n)));
+const pct = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : (v * 100).toFixed(d) + '%');
+const ratio = (a, b) => (b ? a / b : null);
+const sum = (arr, f) => arr.reduce((a, x) => a + (Number(f(x)) || 0), 0);
+const median = (xs) => { const v = xs.filter((x) => x != null && Number.isFinite(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const TYPE = { REELS: 'Reels', TRIAL: 'Пробный', CAROUSEL_ALBUM: 'Карусель', IMAGE: 'Сурет', VIDEO: 'Видео' };
+const ALMATY_MS = 5 * 3600e3;
+const almatyDay = (ms) => new Date(ms + ALMATY_MS).toISOString().slice(0, 10);
+
+// Кілт: /dashboard#key=... (бір рет) → браузерде сақталады; /stats-пен ортақ
+const hashKey = new URLSearchParams(location.hash.slice(1)).get('key');
+if (hashKey) { store.set('statsKey', hashKey); history.replaceState(null, '', location.pathname); }
+let key = hashKey || store.get('statsKey');
+const state = { account: store.get('dashAccount') || '', days: Number(store.get('dashDays')) || 30, data: null, sort: { k: 'at', dir: -1 }, type: 'all', q: '', limit: 50, aud: 'followers' };
+const charts = [];
+
+function loginView(msg) {
+  const input = el('input', { type: 'password', placeholder: 'STATS_KEY' });
+  const go = () => { key = input.value.trim(); store.set('statsKey', key); load(); };
+  input.onkeydown = (e) => e.key === 'Enter' && go();
+  $('#app').replaceChildren(el('div', { class: 'wrap' }, el('div', { class: 'card login' }, el('h3', {}, 'Дашборд'), el('p', { class: 'muted' }, msg || 'Кіру кілтін енгізіңіз'), input, el('button', { onclick: go }, 'Кіру'))));
+}
+
+async function load() {
+  if (!key) return loginView();
+  $('#app').classList.add('loading');
+  const q = new URLSearchParams({ key });
+  if (state.account) q.set('account', state.account);
+  const res = await fetch(API + '/dashboard?' + q).catch(() => null);
+  $('#app').classList.remove('loading');
+  if (!res) return loginView('Желі қатесі, қайта көріңіз');
+  if (res.status === 403) return loginView('Кілт дұрыс емес');
+  const data = await res.json();
+  if (data.error) return loginView(data.error);
+  state.data = data;
+  state.account = data.username;
+  render();
+}
+
+// --- кезеңдер ---
+function periods() {
+  const P = state.days * 864e5, now = Date.now();
+  const mk = (from, to) => {
+    const d0 = almatyDay(from), d1 = almatyDay(to);
+    const posts = state.data.posts.filter((p) => { const t = Date.parse(p.at); return t >= from && t < to; });
+    const days = state.data.days.filter((d) => d.day >= d0 && d.day < d1);
+    const people = sum(posts, (p) => p.people), leads = sum(posts, (p) => p.leads);
+    return { posts, days, people, leads, conv: ratio(leads, people), reach: sum(days, (d) => d.reach), views: sum(days, (d) => d.views),
+      net: sum(days, (d) => d.new_followers) - sum(days, (d) => d.unfollows), trial: posts.filter((p) => p.type === 'TRIAL').length };
+  };
+  return { cur: mk(now - P, now + 864e5), prev: mk(now - 2 * P, now - P) };
+}
+
+function delta(cur, prev, rate) {
+  if (rate) {
+    if (cur == null || prev == null) return el('div', { class: 'd' }, '—');
+    const d = (cur - prev) * 100;
+    if (Math.abs(d) < 0.05) return el('div', { class: 'd' }, 'алдыңғы кезеңдей');
+    return el('div', { class: 'd ' + (d > 0 ? 'up' : 'down') }, `${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(1)} п.п. алдыңғы ${state.days} күнге`);
+  }
+  if (!prev) return el('div', { class: 'd' }, cur ? 'алдыңғы кезеңде дерек жоқ' : '—');
+  const d = (cur - prev) / Math.abs(prev);
+  return el('div', { class: 'd ' + (d > 0 ? 'up' : d < 0 ? 'down' : '') }, `${d >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d * 100))}% алдыңғы ${state.days} күнге`);
+}
+
+function render() {
+  charts.splice(0).forEach((c) => c.destroy());
+  const D = state.data, { cur, prev } = periods();
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Кезең' },
+    [7, 30, 90].map((n) => el('button', { 'aria-pressed': String(state.days === n), onclick: () => { state.days = n; store.set('dashDays', n); render(); } }, `${n} күн`)));
+  const accSel = D.accounts.length > 1 ? el('select', { 'aria-label': 'Аккаунт', onchange: (e) => { state.account = e.target.value; store.set('dashAccount', state.account); load(); } },
+    D.accounts.map((a) => el('option', { value: a, selected: a === D.username ? '' : null }, '@' + a))) : null;
+  const upd = new Date(D.generatedAt).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const nav = el('nav', { class: 'sections' }, [['advice', 'Ұсыныстар'], ['kpi', 'Негізгі'], ['funnel', 'Воронка'], ['flows', 'Сценарийлер'], ['trend', 'Динамика'], ['posts', 'Посттар'], ['reels', 'Reels'], ['time', 'Уақыт'], ['topic', 'Тақырып'], ['stories', 'Сторис'], ['audience', 'Аудитория'], ['repost', 'Пробный салу']]
+    .filter(([id]) => id !== 'repost' || D.repost).map(([id, t]) => el('a', { href: '#' + id }, t)));
+  const header = el('header', {}, el('div', { class: 'wrap' }, el('h1', {}, `@${D.username} · Воронка дашборды`, el('small', {}, `Дерек ${upd} (Алматы) · бет ашылған сайын жаңарады`)), accSel, seg, el('button', { onclick: load, title: 'Жаңарту' }, '↻'), nav));
+  const main = el('div', { class: 'wrap' },
+    adviceSection(), kpiSection(cur, prev), funnelSection(cur), flowsSection(cur), trendSection(cur), postsSection(cur), reelsSection(cur), timeSection(cur), topicSection(cur), storiesSection(), audienceSection(), D.repost ? repostSection() : null);
+  $('#app').replaceChildren(header, main);
+  requestAnimationFrame(drawCharts);
+}
+
+// --- 0. Маркетолог ұсыныстары (сервер есептейді: соңғы 14 күн және 90 күндік заңдылықтар) ---
+function adviceSection() {
+  const list = state.data.advice || [];
+  const KIND = { warn: 'Назар аударыңыз', idea: 'Ұсыныс', good: 'Жақсы нәтиже' };
+  return el('section', { id: 'advice' }, el('h2', {}, 'Маркетолог ұсыныстары'),
+    el('p', { class: 'cap' }, 'Күн сайын соңғы деректен қайта есептеледі: соңғы 14 күн алдыңғы 14 күнмен салыстырылады, тақырып/уақыт/ұзақтық — 90 күн бойынша. Кезең таңдауына тәуелді емес.'),
+    list.length ? el('div', { class: 'grid advice' }, list.map((a) => el('div', { class: 'card ' + a.kind },
+      el('div', { class: 'tag' }, `${KIND[a.kind]} · ${a.area}`), el('h3', {}, a.title), el('p', {}, a.text),
+      a.links.length ? el('ul', {}, a.links.map((l) => el('li', {}, l.href ? el('a', { href: l.href, target: '_blank', rel: 'noopener' }, l.text) : l.text))) : null)))
+      : el('div', { class: 'note' }, 'Қазір ерекше ұсыныс жоқ — көрсеткіштер тұрақты.'));
+}
+
+// --- 1. KPI ---
+function kpiSection(c, p) {
+  const t = (k, v, d) => el('div', { class: 'card tile' }, el('div', { class: 'k' }, k), el('div', { class: 'v' }, v), d);
+  return el('section', { id: 'kpi' }, el('h2', {}, `Негізгі көрсеткіштер · ${state.days} күн`), el('p', { class: 'cap' }, `Әр көрсеткіштің астында — алдыңғы ${state.days} күнмен салыстыру.`),
+    el('div', { class: 'grid kpis' },
+      t('Reach (күндік қосынды)', fmt(c.reach), delta(c.reach, p.reach)),
+      t('Views', fmt(c.views), delta(c.views, p.views)),
+      t('«+» жазған адам', fmt(c.people), delta(c.people, p.people)),
+      t('Нөмір қалдырды', fmt(c.leads), delta(c.leads, p.leads)),
+      t('Конверсия «+» → нөмір', pct(c.conv), delta(c.conv, p.conv, true)),
+      t('Жазылушы таза өсімі', (c.net > 0 ? '+' : '') + fmt(c.net), delta(c.net, p.net)),
+      t('Пост саны', fmt(c.posts.length), el('div', { class: 'd' }, `оның ${c.trial} пробный Reels`)),
+    ));
+}
+
+// --- 2. Жалпы воронка ---
+function funnelSection(c) {
+  const withTrig = c.posts.filter((p) => p.people).length;
+  const step = (v, k) => el('div', { class: 'step' }, el('div', { class: 'v' }, fmt(v)), el('div', { class: 'k' }, k));
+  const arrow = (main, sub) => el('div', { class: 'arrow' }, el('div', {}, el('b', {}, main), sub));
+  return el('section', { id: 'funnel' }, el('h2', {}, 'Жалпы воронка'), el('p', { class: 'cap' }, `${state.days} күн · ${c.posts.length} посттың ${withTrig}-інде триггер-коммент болды.`),
+    el('div', { class: 'card' }, el('div', { class: 'funnel' },
+      step(c.reach, 'Reach — контентті көрген аккаунттар'),
+      arrow(c.reach ? (c.people / c.reach * 10000).toFixed(1) : '—', '«+» / 10 000 reach'),
+      step(c.people, '«+» жазып, DM алған адам'),
+      arrow(pct(c.conv), 'нөмір қалдырды'),
+      step(c.leads, 'Нөмір қалдырды'),
+    )));
+}
+
+// --- 3. Сценарийлер ---
+function flowStats(posts) {
+  const f = {};
+  for (const p of posts) for (const [name, n] of Object.entries(p.flows || {})) {
+    const o = (f[name] ||= { name: name === '—' ? 'Сценарийсіз' : name, posts: 0, people: 0, leads: 0 });
+    o.posts++; o.people += n; o.leads += (p.flowLeads || {})[name] || 0;
+  }
+  return Object.values(f).sort((a, b) => b.people - a.people);
+}
+function flowsSection(c) {
+  const list = flowStats(c.posts);
+  const body = list.length ? el('div', { class: 'grid two' },
+    el('div', { class: 'card' }, el('h3', {}, '«+» адам және нөмір'), el('div', { class: 'cap' }, 'Әр сценарий (DM мәтіні) бойынша'), el('div', { class: 'chart', style: `height:${Math.max(160, list.length * 56 + 60)}px` }, el('canvas', { id: 'c-flows', 'aria-label': 'Сценарийлер бойынша «+» адам және нөмір' }))),
+    el('div', { class: 'card table-wrap' }, el('table', {},
+      el('thead', {}, el('tr', {}, ['Сценарий', 'Пост', '«+» адам', 'Нөмір', 'Конверсия'].map((h, i) => el('th', { class: i ? '' : 'l' }, h)))),
+      el('tbody', {}, list.map((f) => el('tr', {}, el('td', {}, f.name), el('td', {}, f.posts), el('td', {}, fmt(f.people)), el('td', {}, fmt(f.leads)), el('td', {}, pct(ratio(f.leads, f.people))))))))
+  ) : el('div', { class: 'note' }, 'Бұл кезеңде триггер-коммент болмады.');
+  pending.push(() => list.length && bar('c-flows', list.map((f) => f.name), [['«+» адам', list.map((f) => f.people), '--s1'], ['Нөмір', list.map((f) => f.leads), '--s2']], true));
+  return el('section', { id: 'flows' }, el('h2', {}, 'Воронкалар (сценарий) бойынша'), el('p', { class: 'cap' }, 'Адам комментке жазған сөзіне қарай қай DM сценарийін алғаны.'), body);
+}
+
+// --- 4. Динамика ---
+function trendSection(c) {
+  const days = c.days;
+  const labels = days.map((d) => d.day.slice(5));
+  pending.push(() => {
+    line('c-people', labels, [['«+» адам', days.map((d) => d.people), '--s1'], ['Нөмір', days.map((d) => d.leads), '--s2']]);
+    bar('c-reach', labels, [['Reach', days.map((d) => d.reach), '--s1']]);
+    bar('c-net', labels, [['Таза өсім', days.map((d) => (d.new_followers || 0) - (d.unfollows || 0)), '--s3']]);
+    // Бір күнде адам аз — конверсия 0↔100% секіреді, сондықтан 7 күндік жылжымалы
+    const all = state.data.days, idx = new Map(all.map((d, i) => [d.day, i]));
+    line('c-conv', labels, [['Конверсия, % (7 күндік)', days.map((d) => { const w = all.slice(Math.max(0, idx.get(d.day) - 6), idx.get(d.day) + 1); const p = sum(w, (x) => x.people); return p ? +(sum(w, (x) => x.leads) / p * 100).toFixed(1) : null; }), '--s2']]);
+  });
+  const card = (id, t, cap) => el('div', { class: 'card' }, el('h3', {}, t), el('div', { class: 'cap' }, cap), el('div', { class: 'chart' }, el('canvas', { id, 'aria-label': t })));
+  return el('section', { id: 'trend' }, el('h2', {}, 'Күн сайынғы динамика'), el('p', { class: 'cap' }, 'Нөмір — нөмір қалдырылған күнге, «+» — коммент жазылған күнге есептеледі.'),
+    el('div', { class: 'grid two' },
+      card('c-people', '«+» адам және нөмір', 'Күн сайын'),
+      card('c-conv', 'Конверсия', '«+» → нөмір, соңғы 7 күн бойынша жылжымалы'),
+      card('c-reach', 'Reach', 'Аккаунт бойынша, күн сайын'),
+      card('c-net', 'Жазылушы таза өсімі', 'Жаңа минус кеткен'),
+    ));
+}
+
+// --- 5. Посттар ---
+function postsSection(c) {
+  const cols = [['day', 'Күні'], ['title', 'Пост', 'l'], ['reach', 'Reach'], ['views', 'Views'], ['people', '«+» адам'], ['leads', 'Нөмір'], ['conv', 'Конв.'], ['saves', 'Сақтау'], ['shares', 'Бөлісу'], ['retention', 'Көрілу %']];
+  const wrap = el('div', { class: 'card' });
+  const draw = () => {
+    let rows = c.posts.map((p) => ({ ...p, conv: ratio(p.leads, p.people) }));
+    if (state.type !== 'all') rows = rows.filter((p) => p.type === state.type);
+    if (state.q) { const q = state.q.toLowerCase(); rows = rows.filter((p) => p.title.toLowerCase().includes(q) || (p.topic || '').toLowerCase().includes(q)); }
+    const { k, dir } = state.sort;
+    rows.sort((a, b) => { const x = k === 'at' || k === 'day' ? a.at : a[k], y = k === 'at' || k === 'day' ? b.at : b[k]; if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * dir; });
+    const total = rows.length;
+    rows = rows.slice(0, state.limit);
+    const types = ['all', ...new Set(c.posts.map((p) => p.type))];
+    const tools = el('div', { class: 'tools' },
+      el('div', { class: 'seg' }, types.map((t) => el('button', { 'aria-pressed': String(state.type === t), onclick: () => { state.type = t; state.limit = 50; draw(); } }, t === 'all' ? 'Барлығы' : TYPE[t] || t))),
+      el('input', { type: 'search', placeholder: 'Іздеу: мәтін немесе тақырып', value: state.q, oninput: (e) => { state.q = e.target.value; clearTimeout(draw.t); draw.t = setTimeout(() => { draw(); $('#posts input').focus(); }, 250); } }),
+      el('span', { class: 'muted' }, `${total} пост`));
+    const thead = el('tr', {}, cols.map(([kk, h, cls]) => el('th', { class: 'sort ' + (cls || ''), 'data-dir': (state.sort.k === kk || (kk === 'day' && state.sort.k === 'at')) ? (state.sort.dir > 0 ? '↑' : '↓') : null,
+      onclick: () => { state.sort = { k: kk === 'day' ? 'at' : kk, dir: state.sort.k === (kk === 'day' ? 'at' : kk) ? -state.sort.dir : -1 }; draw(); } }, h)));
+    const tbody = el('tbody', {}, rows.map((p) => el('tr', {},
+      el('td', {}, p.day),
+      el('td', { class: 'post' }, p.permalink ? el('a', { href: p.permalink, target: '_blank', rel: 'noopener' }, p.title) : p.title,
+        el('div', { class: 'meta' }, el('span', { class: 'pill' + (p.type === 'TRIAL' ? ' trial' : '') }, TYPE[p.type] || p.type), ' ', p.topic, Object.keys(p.flows || {}).length ? ' · ' + Object.keys(p.flows).join(', ') : '')),
+      el('td', {}, fmt(p.reach)), el('td', {}, fmt(p.views)), el('td', {}, fmt(p.people)), el('td', {}, fmt(p.leads)), el('td', {}, pct(p.conv, 0)),
+      el('td', {}, fmt(p.saves)), el('td', {}, fmt(p.shares)), el('td', {}, pct(p.retention, 0)))));
+    wrap.replaceChildren(tools, el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, thead), tbody)),
+      total > state.limit ? el('button', { class: 'more', onclick: () => { state.limit += 100; draw(); } }, `Тағы көрсету (${total - state.limit})`) : null);
+  };
+  draw();
+  return el('section', { id: 'posts' }, el('h2', {}, 'Посттар'), el('p', { class: 'cap' }, 'Баған атауын бассаңыз — сұрыптайды. Көрілу % — орташа көру уақыты ÷ видео ұзақтығы.'), wrap);
+}
+
+// --- топтау (Reels / Уақыт / Тақырып) ---
+function group(posts, keyFn, order) {
+  const g = {};
+  for (const p of posts) (g[keyFn(p)] ||= []).push(p);
+  const keys = order ? order.filter((k) => g[k]) : Object.keys(g).sort((a, b) => g[b].length - g[a].length);
+  return keys.map((k) => { const ps = g[k]; const people = sum(ps, (p) => p.people), leads = sum(ps, (p) => p.leads);
+    return { key: k, n: ps.length, reach: median(ps.map((p) => p.reach)), views: median(ps.map((p) => p.views)), retention: median(ps.map((p) => p.retention)), skip: median(ps.map((p) => p.skip)), saves: median(ps.map((p) => p.saves)), people, leads, leadsPer: leads / ps.length, conv: ratio(leads, people) }; });
+}
+function groupTable(title, head, rows, extra = []) {
+  return el('div', { class: 'card table-wrap' }, el('h3', {}, title), el('table', {},
+    el('thead', {}, el('tr', {}, [head, 'Пост', 'Медиана reach', ...extra.map((e) => e[0]), '«+» адам', 'Нөмір', 'Нөмір / пост', 'Конв.'].map((h, i) => el('th', { class: i ? '' : 'l' }, h)))),
+    el('tbody', {}, rows.map((r) => el('tr', {}, el('td', {}, r.key), el('td', {}, r.n), el('td', {}, fmt(r.reach)), ...extra.map((e) => el('td', {}, e[1](r))), el('td', {}, fmt(r.people)), el('td', {}, fmt(r.leads)), el('td', {}, r.leadsPer.toFixed(2)), el('td', {}, pct(r.conv, 0)))))));
+}
+
+// --- 6. Reels ---
+function reelsSection(c) {
+  const reels = c.posts.filter((p) => p.type === 'REELS' || p.type === 'TRIAL');
+  const rows = group(reels, (p) => p.durBucket, state.data.meta.durations);
+  return el('section', { id: 'reels' }, el('h2', {}, 'Reels: ұзақтық және көрілу'), el('p', { class: 'cap' }, `${reels.length} Reels (пробныйымен). Медиана — бір вирал видео нәтижені бұрмаламасын деп. Skip — алғашқы 3 секундта өткізіп жібергендер.`),
+    groupTable('Ұзақтық бойынша', 'Ұзақтығы', rows, [['Медиана views', (r) => fmt(r.views)], ['Көрілу %', (r) => pct(r.retention, 0)], ['Skip', (r) => (r.skip == null ? '—' : Math.round(r.skip) + '%')], ['Сақтау (мед.)', (r) => fmt(r.saves)]]));
+}
+
+// --- 7. Уақыт: апта күні × сағат, медиана reach (пробныйсыз) ---
+function timeSection(c) {
+  const posts = c.posts.filter((p) => p.type !== 'TRIAL');
+  const { slots, weekdays } = state.data.meta;
+  const cell = {};
+  for (const p of posts) (cell[p.weekday + '|' + p.slot] ||= []).push(p);
+  const vals = Object.values(cell).map((ps) => median(ps.map((p) => p.reach))).filter((v) => v != null);
+  const max = Math.max(1, ...vals);
+  const heat = el('table', { class: 'heat' }, el('thead', {}, el('tr', {}, el('th', { class: 'l' }, ''), slots.map((s) => el('th', {}, s)))),
+    el('tbody', {}, weekdays.map((w) => el('tr', {}, el('td', { class: 'l' }, w), slots.map((s) => {
+      const ps = cell[w + '|' + s];
+      if (!ps) return el('td', { title: 'Пост жоқ' }, el('span', { class: 'muted' }, '·'));
+      const m = median(ps.map((p) => p.reach));
+      const a = m == null ? 0 : 0.08 + 0.72 * (m / max);
+      return el('td', { style: `background: rgba(var(--heat), ${a.toFixed(2)}); color: ${a > 0.5 ? '#fff' : 'inherit'}`, title: `${w}, ${s}: ${ps.length} пост, медиана reach ${fmt(m)}, «+» ${sum(ps, (p) => p.people)}, нөмір ${sum(ps, (p) => p.leads)}` },
+        fmt(m), el('small', { style: a > 0.5 ? 'color:#fff;opacity:.8' : '' }, `${ps.length} пост`));
+    })))));
+  return el('section', { id: 'time' }, el('h2', {}, 'Жариялау уақыты'), el('p', { class: 'cap' }, `Апта күні × сағат (Алматы), ұяшықта — медиана reach. Пробный Reels кірмейді. ${state.days} күн аз болса, 90 күнді таңдаңыз.`),
+    el('div', { class: 'card table-wrap' }, heat),
+    el('div', { class: 'grid two', style: 'margin-top:12px' },
+      groupTable('Сағат бойынша', 'Уақыт', group(posts, (p) => p.slot, slots)),
+      groupTable('Апта күні бойынша', 'Күн', group(posts, (p) => p.weekday, weekdays))));
+}
+
+// --- 8. Тақырып және CTA ---
+function topicSection(c) {
+  const posts = c.posts.filter((p) => p.type !== 'TRIAL');
+  return el('section', { id: 'topic' }, el('h2', {}, 'Тақырып және CTA'), el('p', { class: 'cap' }, 'Пост жазуындағы кілт сөздер бойынша автоматты анықталады. Пробный Reels кірмейді.'),
+    el('div', { class: 'grid', style: 'grid-template-columns:1fr' },
+      groupTable('Тақырып бойынша', 'Тақырып', group(posts, (p) => p.topic)),
+      groupTable('CTA: не жазуды сұрайды', 'CTA', group(posts, (p) => p.cta))));
+}
+
+// --- 9. Сторис ---
+function storiesSection() {
+  const from = Date.now() - state.days * 864e5;
+  const s = state.data.stories.filter((x) => Date.parse(x.at) >= from);
+  const exit = s.filter((x) => x.views).map((x) => (x.exit || 0) / x.views);
+  const t = (k, v) => el('div', { class: 'card tile' }, el('div', { class: 'k' }, k), el('div', { class: 'v' }, v));
+  return el('section', { id: 'stories' }, el('h2', {}, 'Сторис'), el('p', { class: 'cap' }, 'Сторис статистикасы сағат сайын жиналады (Instagram оны 24 сағаттан кейін бермейді).'),
+    s.length ? el('div', {},
+      el('div', { class: 'grid kpis' }, t('Сторис саны', fmt(s.length)), t('Орташа reach', fmt(sum(s, (x) => x.reach) / s.length)), t('Профильге өтті', fmt(sum(s, (x) => x.profile))), t('Жауап жазды', fmt(sum(s, (x) => x.replies))), t('Шығып кету (медиана)', pct(median(exit), 0))),
+      el('div', { class: 'card table-wrap', style: 'margin-top:12px' }, el('table', {},
+        el('thead', {}, el('tr', {}, ['Уақыты', 'Түрі', 'Reach', 'Views', 'Жауап', 'Бөлісу', 'Профиль', 'Алға', 'Шықты', 'Шығу %'].map((h, i) => el('th', { class: i ? '' : 'l' }, h)))),
+        el('tbody', {}, s.slice(0, 40).map((x) => el('tr', {},
+          el('td', {}, x.permalink ? el('a', { href: x.permalink, target: '_blank', rel: 'noopener' }, new Date(x.at).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) : x.at),
+          el('td', {}, x.type === 'VIDEO' ? 'Видео' : 'Сурет'), el('td', {}, fmt(x.reach)), el('td', {}, fmt(x.views)), el('td', {}, fmt(x.replies)), el('td', {}, fmt(x.shares)), el('td', {}, fmt(x.profile)),
+          el('td', {}, fmt(x.forward)), el('td', {}, fmt(x.exit)), el('td', {}, x.views ? pct((x.exit || 0) / x.views, 0) : '—'))))))) : el('div', { class: 'note' }, 'Бұл кезеңде сторис жоқ.'));
+}
+
+// --- 10. Аудитория ---
+function bars(obj, limit = 10, order) {
+  let e = Object.entries(obj || {});
+  e = order ? order.filter((k) => obj[k] != null).map((k) => [k, obj[k]]) : e.sort((a, b) => b[1] - a[1]).slice(0, limit);
+  const total = sum(Object.values(obj || {}), (v) => v) || 1, max = Math.max(1, ...e.map((x) => x[1]));
+  return el('div', { class: 'bars' }, e.map(([k, v]) => el('div', { class: 'row', title: `${k}: ${fmt(v)}` }, el('span', {}, k), el('div', { class: 'track' }, el('div', { class: 'fill', style: `width:${(v / max) * 100}%` })), el('span', { class: 'n' }, pct(v / total, 0)))));
+}
+function audienceSection() {
+  const A = state.data.audience || {};
+  const names = { followers: 'Жазылушылар', engaged: 'Белсенділер (30 күн)', reached: 'Көргендер (30 күн)' };
+  const kinds = Object.keys(names).filter((k) => A[k] && Object.keys(A[k].age || {}).length);
+  if (!kinds.length) return el('section', { id: 'audience' }, el('h2', {}, 'Аудитория'), el('div', { class: 'note' }, 'Instagram аудитория деректерін бермеді.'));
+  if (!kinds.includes(state.aud)) state.aud = kinds[0];
+  const a = A[state.aud];
+  const box = el('div', {});
+  const seg = el('div', { class: 'seg', style: 'margin-bottom:12px' }, kinds.map((k) => el('button', { 'aria-pressed': String(state.aud === k), onclick: () => { state.aud = k; $('#audience').replaceWith(audienceSection()); } }, names[k])));
+  box.append(seg, el('div', { class: 'grid two' },
+    el('div', { class: 'card' }, el('h3', {}, 'Жынысы'), bars(a.gender, 3)),
+    el('div', { class: 'card' }, el('h3', {}, 'Жасы'), bars(a.age, 10, state.data.meta.ages)),
+    el('div', { class: 'card' }, el('h3', {}, 'Қалалар (топ-12)'), bars(a.city, 12)),
+    el('div', { class: 'card' }, el('h3', {}, 'Елдер (топ-8)'), bars(a.country, 8))));
+  return el('section', { id: 'audience' }, el('h2', {}, 'Аудитория'), el('p', { class: 'cap' }, 'Instagram әр бөлімнің тек ең үлкен 45 тобын береді, сондықтан пайыз осы топтардың ішінде.'), box);
+}
+
+// --- 11. Пробный қайта салу ---
+function repostSection() {
+  const r = state.data.repost, all = r.done + r.queued;
+  return el('section', { id: 'repost' }, el('h2', {}, 'Ескі Reels-ті пробныйға қайта салу'), el('p', { class: 'cap' }, `Күніне ${r.daily} видео, Алматы 09:00–23:00. Бұрын пробный болған видеолар өткізіледі.`),
+    el('div', { class: 'card' },
+      el('div', {}, el('b', {}, `${fmt(r.done)} / ${fmt(all)}`), ' салынды · ', `${fmt(r.queued)} кезекте · ${fmt(r.skip)} өткізілді (бұрын пробный болған) · ${fmt(r.error)} қате`),
+      el('div', { class: 'progress', role: 'progressbar', 'aria-valuenow': r.done, 'aria-valuemax': all }, el('div', { style: `width:${all ? (r.done / all) * 100 : 0}%` })),
+      el('div', { class: 'muted', style: 'font-size:13px' }, `Кезек шамамен ${Math.ceil(r.queued / r.daily)} күнге жетеді.`),
+      r.last.length ? el('table', { style: 'margin-top:10px' }, el('thead', {}, el('tr', {}, el('th', { class: 'l' }, 'Салынған уақыты'), el('th', { class: 'l' }, 'Жаңа пробный'), el('th', { class: 'l' }, 'Түпнұсқа'))),
+        el('tbody', {}, r.last.map((x) => el('tr', {}, el('td', {}, new Date(x.at).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })),
+          el('td', { class: 'l' }, x.link ? el('a', { href: x.link, target: '_blank', rel: 'noopener' }, 'ашу') : '—'), el('td', { class: 'l' }, el('a', { href: x.src, target: '_blank', rel: 'noopener' }, 'ашу')))))) : null));
+}
+
+// --- графиктер (Chart.js): жұқа сызық, 4px дөңгелек бағандар, бір ось, hover tooltip ---
+const pending = [];
+function drawCharts() { pending.splice(0).forEach((f) => f()); }
+function base(stacked) {
+  const ink = css('--ink-3'), grid = css('--grid');
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom', labels: { color: css('--ink-2'), boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      tooltip: { backgroundColor: css('--ink'), titleColor: css('--surface'), bodyColor: css('--surface'), padding: 8, callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed[c.chart.options.indexAxis === 'y' ? 'x' : 'y'] == null ? '—' : nf.format(c.parsed[c.chart.options.indexAxis === 'y' ? 'x' : 'y'])}` } } },
+    scales: { x: { ticks: { color: ink, maxRotation: 0, autoSkipPadding: 12 }, grid: { display: false }, border: { color: grid } },
+      y: { ticks: { color: ink, callback: (v) => nf.format(v) }, grid: { color: grid }, border: { display: false }, beginAtZero: true } },
+  };
+}
+function line(id, labels, series) {
+  const cv = document.getElementById(id); if (!cv) return;
+  const o = base();
+  if (series.length < 2) o.plugins.legend.display = false;
+  charts.push(new Chart(cv, { type: 'line', data: { labels, datasets: series.map(([label, data, v]) => ({ label, data, borderColor: css(v), backgroundColor: css(v), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true })) }, options: o }));
+}
+function bar(id, labels, series, horizontal) {
+  const cv = document.getElementById(id); if (!cv) return;
+  const o = base();
+  if (series.length < 2) o.plugins.legend.display = false;
+  if (horizontal) { o.indexAxis = 'y'; o.interaction = { mode: 'index', axis: 'y', intersect: false }; [o.scales.x, o.scales.y] = [o.scales.y, o.scales.x]; o.scales.y.grid = { display: false }; o.scales.x.grid = { color: css('--grid') }; }
+  charts.push(new Chart(cv, { type: 'bar', data: { labels, datasets: series.map(([label, data, v]) => ({ label, data, backgroundColor: css(v), borderRadius: 4, borderSkipped: 'start', maxBarThickness: horizontal ? 18 : 22, categoryPercentage: 0.8, barPercentage: 0.9, borderColor: css('--surface'), borderWidth: { top: 0, bottom: 0, left: 0, right: 0 } })) }, options: o }));
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => state.data && render());
+
+load();
+</script>
+</body>
+</html>

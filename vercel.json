@@ -1,0 +1,8 @@
+{
+  "cleanUrls": true,
+  "functions": { "api/cron/funnel.js": { "maxDuration": 300 }, "api/cron/health.js": { "maxDuration": 300 }, "api/funnel.js": { "maxDuration": 120 }, "api/dashboard.js": { "maxDuration": 60 }, "api/cron/watch.js": { "maxDuration": 120 }, "api/cron/repost.js": { "maxDuration": 300, "includeFiles": "node_modules/ffmpeg-static/ffmpeg" } },
+  "crons": [
+    { "path": "/api/cron/health", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/funnel", "schedule": "0 3 * * *" }
+  ]
+}
