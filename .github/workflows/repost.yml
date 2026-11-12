@@ -1,14 +1,14 @@
-# Ескі Reels-ті пробный етіп қайта салу (lib/repost.js). Алматы 09–23 аралығында әр 20 минут.
+# Ескі Reels-ті пробный етіп қайта салу (lib/repost.js). Алматы 08–23; әр run ~55 мин минут сайын тексереді.
 name: repost
 on:
   schedule:
-    - cron: '*/20 3-18 * * *'
+    - cron: '*/30 3-18 * * *'
   workflow_dispatch:
 concurrency: repost
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
